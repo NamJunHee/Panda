@@ -79,8 +79,8 @@ def move_panda():
    #좌표 목표 계획 및 실행
    pose_goal = geometry_msgs.msg.Pose()
    pose_goal.orientation.w = 0.0
-   pose_goal.position.x = 0.6
-   pose_goal.position.y = 0.0
+   pose_goal.position.x = 0.5
+   pose_goal.position.y = 0.3
    pose_goal.position.z = 0.5
 
    # quaternion = tf.transformations.quaternion_from_euler(0, 0, 0, 'rzyx')
@@ -91,13 +91,27 @@ def move_panda():
    pose_goal.orientation.z = quaternion[2]
    pose_goal.orientation.w = quaternion[3]
 
-
-   # move_group.set_orientation_target(quaternion)
    move_group.set_pose_target(pose_goal)
 
+   plan = move_group.plan()
 
-   move_group.go(wait = True)
-   move_group.stop()
+   display_tracjectory = moveit_msgs.msg.DisplayTrajectory()
+   display_tracjectory.trajectory_start = move_group.get_current_state()
+   display_tracjectory.trajectory.append(plan)
+
+   operation = input("operation : ")
+   
+   if(operation == 'move'):
+
+      move_group.go(wait = True)
+      move_group.stop()
+      return
+   
+   elif(operation == 'stop'):
+
+      print("STOP")
+
+   
 
 if __name__ == "__main__":
     try:
