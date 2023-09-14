@@ -18,8 +18,9 @@ from symbolic_msgs.srv import*
 import moveit_msgs.msg
 from std_msgs.msg import String
 
-group_name = "panda_arm"
+group_name = "arm"
 move_group = MoveGroupCommander(group_name)
+move_group.set_pose_reference_frame("panda_link0")
 
 # def get_vision():
 #     rospy.wait_for_service('perception_command')
@@ -79,17 +80,23 @@ def move_panda():
    #좌표 목표 계획 및 실행
    pose_goal = geometry_msgs.msg.Pose()
    pose_goal.orientation.w = 0.0
-   pose_goal.position.x = 0.2
+   pose_goal.position.x = 0.6
    pose_goal.position.y = 0.0
-   pose_goal.position.z = 0.7
+   pose_goal.position.z = 0.35
 
    # quaternion = tf.transformations.quaternion_from_euler(0, 0, 0, 'rzyx')
    # 회전 순서 y->z->x
-   quaternion = tf.transformations.quaternion_from_euler(np.pi/2, pi/4, 0, 'ryzx')
+   quaternion = tf.transformations.quaternion_from_euler(np.pi/2, 0, 0, 'ryzx')
    pose_goal.orientation.x = quaternion[0]
    pose_goal.orientation.y = quaternion[1]
    pose_goal.orientation.z = quaternion[2]
    pose_goal.orientation.w = quaternion[3]
+#    quaternion = tf.transformations.quaternion_from_euler(0, 0, 0, 'ryzx')
+#    pose_goal.orientation.x = quaternion[0]
+#    pose_goal.orientation.y = quaternion[1]
+#    pose_goal.orientation.z = quaternion[2]
+#    pose_goal.orientation.w = quaternion[3]
+
 
    move_group.set_pose_target(pose_goal)
 
