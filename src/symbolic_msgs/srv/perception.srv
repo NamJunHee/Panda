@@ -1,0 +1,12 @@
+# request
+bool detect_obj
+int32 place
+---
+# rosponse
+bool success
+vision_msgs/Detection2DArray det_2d
+std_msgs/Int16MultiArray instance_id
+vision_msgs/Detection3DArray det_3d
+geometry_msgs/PoseArray grasp_pose
+vision_msgs/BoundingBox3D table_pose
+vision_msgs/BoundingBox3D shelf_pose
