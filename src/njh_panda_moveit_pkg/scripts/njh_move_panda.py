@@ -81,9 +81,9 @@ class NJH_MovePanda(object):
       print("")
 
    def get_vision(self):
-      rospy.wait_for_service('perception_command')
-      target_pose = Pose()
 
+      rospy.wait_for_service('perception_command')
+      
       try:
         service_proxy = rospy.ServiceProxy('perception_command', perception)
 
@@ -109,50 +109,54 @@ class NJH_MovePanda(object):
 
    def plan_cartesian_path(self,scale=1):
    
-      # wpose.position.x += scale * float(self.e_Certesian_X.get())
-      # wpose.position.y += scale * float(self.e_Certesian_Y.get())
-      # wpose.position.z += scale * float(self.e_Certesian_Z.get())]
-
       move_group = self.move_group
 
       waypoints = []
+      wpose = move_group.get_current_pose().pose
+
+      wpose.position.x += scale * float(self.e_Certesian_X.get())
+      wpose.position.y += scale * float(self.e_Certesian_Y.get())
+      wpose.position.z += scale * float(self.e_Certesian_Z.get())
+
+      waypoints.append(copy.deepcopy(wpose))
+
       # wpose = move_group.get_current_pose().pose
 
-      wpose0 = move_group.get_current_pose().pose
-      quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi/4, 'ryxz')
+      # wpose0 = move_group.get_current_pose().pose
+      # quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi/4, 'ryxz')
 
-      wpose0.orientation.x = quaternion[0]
-      wpose0.orientation.y = quaternion[1]
-      wpose0.orientation.z = quaternion[2]
-      wpose0.orientation.w = quaternion[3]
+      # wpose0.orientation.x = quaternion[0]
+      # wpose0.orientation.y = quaternion[1]
+      # wpose0.orientation.z = quaternion[2]
+      # wpose0.orientation.w = quaternion[3]
 
-      print(wpose0)
+      # print(wpose0)
 
-      waypoints.append(copy.deepcopy(wpose0))
+      # waypoints.append(copy.deepcopy(wpose0))
 
-      wpose1 = Pose()
-      wpose1.position.x = float(self.e_wpose1_X.get())
-      wpose1.position.y = float(self.e_wpose1_Y.get())
-      wpose1.position.z = float(self.e_wpose1_Z.get())
+      # wpose1 = Pose()
+      # wpose1.position.x = float(self.e_wpose1_X.get())
+      # wpose1.position.y = float(self.e_wpose1_Y.get())
+      # wpose1.position.z = float(self.e_wpose1_Z.get())
 
-      wpose1.orientation.x = quaternion[0]
-      wpose1.orientation.y = quaternion[1]
-      wpose1.orientation.z = quaternion[2]
-      wpose1.orientation.w = quaternion[3]
+      # wpose1.orientation.x = quaternion[0]
+      # wpose1.orientation.y = quaternion[1]
+      # wpose1.orientation.z = quaternion[2]
+      # wpose1.orientation.w = quaternion[3]
 
-      waypoints.append(copy.deepcopy(wpose1))
+      # waypoints.append(copy.deepcopy(wpose1))
 
-      wpose2 = Pose()
-      wpose2.position.x = float(self.e_wpose2_X.get())
-      wpose2.position.y = float(self.e_wpose2_Y.get())
-      wpose2.position.z = float(self.e_wpose2_Z.get())
+      # wpose2 = Pose()
+      # wpose2.position.x = float(self.e_wpose2_X.get())
+      # wpose2.position.y = float(self.e_wpose2_Y.get())
+      # wpose2.position.z = float(self.e_wpose2_Z.get())
 
-      wpose2.orientation.x = quaternion[0]
-      wpose2.orientation.y = quaternion[1]
-      wpose2.orientation.z = quaternion[2]
-      wpose2.orientation.w = quaternion[3]
+      # wpose2.orientation.x = quaternion[0]
+      # wpose2.orientation.y = quaternion[1]
+      # wpose2.orientation.z = quaternion[2]
+      # wpose2.orientation.w = quaternion[3]
 
-      waypoints.append(copy.deepcopy(wpose2))
+      # waypoints.append(copy.deepcopy(wpose2))
 
       (plan, fraction) = move_group.compute_cartesian_path(waypoints, 0.01, 0.0)
 
@@ -318,9 +322,6 @@ class NJH_MovePanda(object):
       self.e_wpose2_Z.grid(row=15, column=1)
 
       self.window.mainloop()
-
-  
-
 
 def main():
 
