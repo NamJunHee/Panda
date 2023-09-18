@@ -160,10 +160,10 @@ class NJH_MovePanda(object):
 
       (plan, fraction) = move_group.compute_cartesian_path(waypoints, 0.01, 0.0)
 
-      pose_goal = move_group.get_current_pose().pose
-      move_group.set_pose_target(pose_goal)
+      # pose_goal = move_group.get_current_pose().pose
+      # move_group.set_pose_target(pose_goal)
 
-      move_group.execute(plan, wait=True)
+      # move_group.execute(plan, wait=True)
    
    def move_panda(self):
 
