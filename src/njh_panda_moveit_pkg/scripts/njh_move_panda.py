@@ -33,7 +33,7 @@ class NJH_MovePanda(object):
       robot = moveit_commander.RobotCommander()
       scene = moveit_commander.PlanningSceneInterface()
 
-      group_name = "panda_arm"
+      group_name = "arm"#"panda_arm"
       move_group = moveit_commander.MoveGroupCommander(group_name)
       move_group.set_pose_reference_frame("panda_link0")
       window = Tk()
@@ -43,7 +43,10 @@ class NJH_MovePanda(object):
       self.move_group = move_group
       self.window = window
 
-      self.InitialGoalPosition_X = 0.7
+      self.x_compensation = 0.254
+      self.z_compensation = 0.576
+
+      self.InitialGoalPosition_X = 0.4
       self.InitialGoalPosition_Y = 0.0
       self.InitialGoalPosition_Z = 0.5
 
@@ -77,8 +80,9 @@ class NJH_MovePanda(object):
       print("============ End effector link: %s" % eef_link)
 
       print("============ Printing robot state")
-      print(robot.get_current_state())
+      print(move_group.get_current_pose())
       print("")
+
 
    def get_vision(self):
 
@@ -108,24 +112,28 @@ class NJH_MovePanda(object):
         print ("Service Call Failed : %s" %e)
 
    def plan_cartesian_path(self,scale=1):
-   
+
       move_group = self.move_group
 
-      waypoints = []
       wpose = move_group.get_current_pose().pose
-
-      wpose.position.x += scale * float(self.e_Certesian_X.get())
+      
+      wpose.position.x += scale * float(self.e_Certesian_X.get()) - self.x_compensation
       wpose.position.y += scale * float(self.e_Certesian_Y.get())
-      wpose.position.z += scale * float(self.e_Certesian_Z.get())
+      wpose.position.z += scale * float(self.e_Certesian_Z.get()) - self.z_compensation
 
+      quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi, 'ryxz')
+      wpose.orientation.x = quaternion[0] 
+      wpose.orientation.y = quaternion[1]
+      wpose.orientation.z = quaternion[2] 
+      wpose.orientation.w = quaternion[3]
+
+      waypoints = []
       waypoints.append(copy.deepcopy(wpose))
-
-      # wpose = move_group.get_current_pose().pose
 
       # wpose0 = move_group.get_current_pose().pose
       # quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi/4, 'ryxz')
 
-      # wpose0.orientation.x = quaternion[0]
+      # wpose0.orientation.x = quaternion[0]  
       # wpose0.orientation.y = quaternion[1]
       # wpose0.orientation.z = quaternion[2]
       # wpose0.orientation.w = quaternion[3]
@@ -159,13 +167,10 @@ class NJH_MovePanda(object):
       # waypoints.append(copy.deepcopy(wpose2))
 
       (plan, fraction) = move_group.compute_cartesian_path(waypoints, 0.01, 0.0)
-
-      # pose_goal = move_group.get_current_pose().pose
-      # move_group.set_pose_target(pose_goal)
-
+      return plan
       # move_group.execute(plan, wait=True)
    
-   def move_panda(self):
+   def plan_move_panda(self):
 
       move_group = self.move_group
       
@@ -173,57 +178,67 @@ class NJH_MovePanda(object):
 
       #좌표 목표 계획 및 실행
       pose_goal = geometry_msgs.msg.Pose()
-      pose_goal.orientation.w = 0.0
-      pose_goal.position.x = float(self.e_GoalPosition_X.get())
+      pose_goal.position.x = float(self.e_GoalPosition_X.get()) #+ self.x_compensation
       pose_goal.position.y = float(self.e_GoalPosition_Y.get())
-      pose_goal.position.z = float(self.e_GoalPosition_Z.get())
+      pose_goal.position.z = float(self.e_GoalPosition_Z.get()) #+ self.z_compensation
 
-      # quaternion = tf.transformations.quaternion_from_euler(0, 0, 0, 'rzyx')
+      quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi, 'ryxz') #real_robot
       # 회전 순서 y->z->x
-      quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi/4, 'ryxz')
+      # quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi/4, 'ryxz') #my_computer
       pose_goal.orientation.x = quaternion[0]
       pose_goal.orientation.y = quaternion[1]
       pose_goal.orientation.z = quaternion[2]
       pose_goal.orientation.w = quaternion[3]
 
+      # pose_goal.orientation.x = -1/math.sqrt(2)  
+      # pose_goal.orientation.y = 0
+      # pose_goal.orientation.z = -1/math.sqrt(2)  
+      # pose_goal.orientation.w = 0
+
+      # waypoints = []
+      # waypoints.append(copy.deepcopy(pose_goal))
+      # (plan, fraction) = move_group.compute_cartesian_path(waypoints, 0.01, 0.0)
+
+      # return plan
+      # move_group.execute(plan, wait=True)
+
       move_group.set_pose_target(pose_goal)
 
       plan = move_group.plan()
 
-      display_tracjectory = moveit_msgs.msg.DisplayTrajectory()
-      display_tracjectory.trajectory_start = move_group.get_current_state()
-      display_tracjectory.trajectory.append(plan)
+      wpose = move_group.get_current_pose().pose
+      print(wpose)
+      # display_tracjectory = moveit_msgs.msg.DisplayTrajectory()
+      # display_tracjectory.trajectory_start = move_group.get_current_state()
+      # display_tracjectory.trajectory.append(plan)
+ 
+   def move_panda(self):
 
-      operation = "move"#input("operation : ")
+      move_group = self.move_group
 
-      if(operation == 'move'):
+      plan = self.plan_cartesian_path()
+      move_group.execute(plan, wait=True)
 
-         move_group.go(wait = True)
-         move_group.stop()
-
-         return
-
-      elif(operation == 'stop'):
-
-         print("STOP")
+      # move_group.go(wait = True)
+      # move_group.stop()      
 
    def add_object(self):
 
       object_name = "box"
       object_pose = Pose()
-      object_pose.position.x = 0.8
+      object_pose.position.x = 0.4
       object_pose.position.y = 0.0
       object_pose.position.z = 0.5
-
       object_dimensions = [0.05, 0.05, 0.1]  # [length, width, height]
 
       object_box = SolidPrimitive()
       object_box.type = SolidPrimitive.BOX
       object_box.dimensions = object_dimensions
 
+      print("planning_frame:", self.robot.get_planning_frame())
       collision_object = moveit_commander.CollisionObject()
       collision_object.id = object_name
-      collision_object.header.frame_id = self.robot.get_planning_frame()
+      collision_object.header.frame_id = "panda_link0"
       collision_object.primitives = [object_box]
       collision_object.primitive_poses = [object_pose]
 
@@ -262,7 +277,7 @@ class NJH_MovePanda(object):
       
    def panda_GUI(self):
       self.window.iconbitmap = "tf_icon.png"
-      self.window.geometry("900x800+500+300")
+      self.window.geometry("700x500+500+300")
 
       Label(self.window, text="NJH_MOVE_PANDA")
       Label(self.window, text="Goal_Position_X").grid(row = 0,column=0)
@@ -293,7 +308,8 @@ class NJH_MovePanda(object):
       self.e_Certesian_Y.insert(0, str(self.InitialCartesian_Y))
       self.e_Certesian_Z.insert(0, str(self.InitialCartesian_Z))
 
-      b_move_panda = Button(self.window, text="move_panda", command=self.move_panda)
+      b_move_panda = Button(self.window, text = "MOVE_PANDA", command=self.move_panda)
+      b_plan_move_panda = Button(self.window, text="plan_move_panda", command=self.plan_move_panda)
       b_plan_cartesian_path = Button(self.window, text="plan_certesian_path", command=self.plan_cartesian_path)
       b_add_object = Button(self.window, text="add_object", command=self.add_object)
 
@@ -305,7 +321,8 @@ class NJH_MovePanda(object):
       self.e_Certesian_Y.grid(row=1, column=3)
       self.e_Certesian_Z.grid(row=2, column=3)
 
-      b_move_panda.grid(row=3, column=1)
+      b_move_panda.grid(row=1, column=6)
+      b_plan_move_panda.grid(row=3, column=1)
       b_plan_cartesian_path.grid(row=3, column=3)
       b_add_object.grid(row=4, column = 0)
 
