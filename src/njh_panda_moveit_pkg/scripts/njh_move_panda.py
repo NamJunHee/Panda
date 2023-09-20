@@ -33,7 +33,7 @@ class NJH_MovePanda(object):
       robot = moveit_commander.RobotCommander()
       scene = moveit_commander.PlanningSceneInterface()
 
-      group_name = "panda_arm"
+      group_name = "arm"
       move_group = moveit_commander.MoveGroupCommander(group_name)
       move_group.set_pose_reference_frame("panda_link0")
       window = Tk()
@@ -43,8 +43,11 @@ class NJH_MovePanda(object):
       self.move_group = move_group
       self.window = window
 
-      self.vision_position = 0
-      self.vision_orientation = 0
+      # self.vision_position = 0
+      # self.vision_orientation = 0
+
+      self.move_plan = moveit_msgs.msg.RobotTrajectory
+      self.vision_plan = moveit_msgs.msg.RobotTrajectory
 
       self.x_compensation = 0.254
       self.z_compensation = 0.576
@@ -57,11 +60,14 @@ class NJH_MovePanda(object):
       self.InitialCartesian_Y = 0.0
       self.InitialCartesian_Z = 0.0
 
-      self.InitialTableSize = [0.8, 0.5, 0.1]
-      self.InitialTablePose = [0.4, 0.5, 0.1]
+      self.InitialTableSize = [0.5, 0.8, 1.0]
+      self.InitialTablePose = [0.66 , 0.5, 0.5 - 0.576]
 
-      self.InitialBoxSize = [0.37, 0.765, 0.017]
-      self.InitialBoxPose = [0.7,0.0, 0.6]
+      self.InitialShelfSize = [0.5, 0.765, 1.0]
+      self.InitialShelfPose = [0.66 ,-0.45, 0.5 - 0.576]
+
+      self.vision_posion = []
+      self.vision_orientation = []
 
       self.e_GoalPosition_X = Entry(self.window)
       self.e_GoalPosition_Y = Entry(self.window)
@@ -79,13 +85,13 @@ class NJH_MovePanda(object):
       self.e_TablePose_Y = Entry(self.window)
       self.e_TablePose_Z = Entry(self.window)
 
-      self.e_BoxSize_X = Entry(self.window)
-      self.e_BoxSize_Y = Entry(self.window)
-      self.e_BoxSize_Z = Entry(self.window)
+      self.e_ShelfSize_X = Entry(self.window)
+      self.e_ShelfSize_Y = Entry(self.window)
+      self.e_ShelfSize_Z = Entry(self.window)
 
-      self.e_BoxPose_X = Entry(self.window)
-      self.e_BoxPose_Y = Entry(self.window)
-      self.e_BoxPose_Z = Entry(self.window)
+      self.e_ShelfPose_X = Entry(self.window)
+      self.e_ShelfPose_Y = Entry(self.window)
+      self.e_ShelfPose_Z = Entry(self.window)
 
       self.e_VisionPose_X = Entry(self.window)
       self.e_VisionPose_Y = Entry(self.window)
@@ -100,8 +106,7 @@ class NJH_MovePanda(object):
       # print(move_group.get_current_pose())
       # print("")
 
-
-   def get_vision(self):
+   def plan_vision_panda(self):
 
       rospy.wait_for_service('perception_command')
       
@@ -114,33 +119,56 @@ class NJH_MovePanda(object):
         request.place = 1
 
         response = service_proxy(request)
-
+        
         #response
-        self.vision_position = response.det_3d.detections[0].bbox.center.position
-        self.vision_orientation = response.det_3d.detctionp[0].bbox.center.orientation
+        vision_position = response.det_3d.detections[0].bbox.center.position
+      #   vision_orientation = response.det_3d.detections[0].bbox.center.orientation
+
+        move_group = self.move_group
+
+        pose_goal = geometry_msgs.msg.Pose()
+           
+        pose_goal.position.x = vision_position.x
+        pose_goal.position.y = vision_position.y
+        pose_goal.position.z = vision_position.z
+        print(pose_goal.position)
+
+        if pose_goal.position.x > 0 :
+           pose_goal.position.x -= 0.2
+        else :
+           pose_goal.position.x += 0.2
+
+        if pose_goal.position.y > 0 :
+           pose_goal.position.y -= 0.0
+        else :
+           pose_goal.position.y += 0.0
+
+        if pose_goal.position.z > 0 :
+           pose_goal.position.z += 0.1
+        else :
+           pose_goal.position.z -= 0.1
+
+        quaternion = tf.transformations.quaternion_from_euler(pi*2/3, 0, pi, 'ryxz') 
+        pose_goal.orientation.x = quaternion[0] 
+        pose_goal.orientation.y = quaternion[1]
+        pose_goal.orientation.z = quaternion[2]
+        pose_goal.orientation.w = quaternion[3]
+
+        print(pose_goal.position)
+   
+        move_group.set_pose_target(pose_goal)
+        self.vision_plan = move_group.plan()
+
+        self.e_VisionPose_X.insert(0, str(vision_position.x))
+        self.e_VisionPose_Y.insert(0, str(vision_position.y))
+        self.e_VisionPose_Z.insert(0, str(vision_position.z))
         
       except rospy.ServiceException as e:
         print ("Service Call Failed : %s" %e)
 
-   def plan_vision_panda(self):
-
-      self.get_vision
-
+   def plan_view(self):
       move_group = self.move_group
-
-      pose_goal = geometry_msgs.msg.Pose()
-      pose_goal.position.x = self.vision_position.x
-      pose_goal.position.y = self.vision_position.y
-      pose_goal.position.z = self.vision_position.z
-
-      quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi, 'ryxz') 
-      pose_goal.orientation.x = quaternion[0] 
-      pose_goal.orientation.y = quaternion[1]
-      pose_goal.orientation.z = quaternion[2]
-      pose_goal.orientation.w = quaternion[3]
-
-      move_group.set_pose_target(pose_goal)
-      move_group.plan()
+      # move_group.plan()
 
    def plan_cartesian_path(self,scale=1):
 
@@ -148,11 +176,11 @@ class NJH_MovePanda(object):
 
       wpose = move_group.get_current_pose().pose
       
-      wpose.position.x += scale * float(self.e_Certesian_X.get()) #- self.x_compensation
+      wpose.position.x += scale * float(self.e_Certesian_X.get()) - self.x_compensation
       wpose.position.y += scale * float(self.e_Certesian_Y.get())
-      wpose.position.z += scale * float(self.e_Certesian_Z.get()) #- self.z_compensation
+      wpose.position.z += scale * float(self.e_Certesian_Z.get()) - self.z_compensation
 
-      quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi, 'ryxz')
+      quaternion = tf.transformations.quaternion_from_euler(pi*3/4, 0, pi, 'ryxz')
       wpose.orientation.x = quaternion[0] 
       wpose.orientation.y = quaternion[1]
       wpose.orientation.z = quaternion[2] 
@@ -175,7 +203,7 @@ class NJH_MovePanda(object):
       pose_goal.position.z = float(self.e_GoalPosition_Z.get())
 
       # 회전 순서 y->z->x
-      quaternion = tf.transformations.quaternion_from_euler(pi/2, 0, pi, 'ryxz') 
+      quaternion = tf.transformations.quaternion_from_euler(pi*3/4, 0, pi, 'ryxz') 
       pose_goal.orientation.x = quaternion[0]
       pose_goal.orientation.y = quaternion[1]
       pose_goal.orientation.z = quaternion[2]
@@ -187,14 +215,12 @@ class NJH_MovePanda(object):
       # pose_goal.orientation.w = 0
 
       move_group.set_pose_target(pose_goal)
-      move_group.plan()
-
+      self.move_plan = move_group.plan()
+ 
    def move_panda(self):
 
       move_group = self.move_group
-
-      move_group.go(wait = True)
-      move_group.stop()      
+      move_group.execute(self.move_plan,wait = True)
 
    def move_cartesian_path(self):
 
@@ -206,9 +232,7 @@ class NJH_MovePanda(object):
    def move_vision_panda(self):
       
       move_group = self.move_group
-      
-      move_group.go(wait = True)
-      move_group.stop()
+      move_group.execute(self.vision_plan, wait = True)
 
    def add_object(self, size_x, size_y, size_z, position_x, position_y, position_z, name):
 
@@ -268,7 +292,7 @@ class NJH_MovePanda(object):
    def panda_GUI(self):
 
       self.window.iconbitmap = "tf_icon.png"
-      self.window.geometry("1300x400+500+300")
+      self.window.geometry("1000x400+500+300")
 
       self.e_GoalPosition_X.insert(0, str(self.InitialGoalPosition_X))
       self.e_GoalPosition_Y.insert(0, str(self.InitialGoalPosition_Y))
@@ -284,21 +308,22 @@ class NJH_MovePanda(object):
       self.e_TablePose_Y.insert(0, str(self.InitialTablePose[1]))
       self.e_TablePose_Z.insert(0, str(self.InitialTablePose[2]))
 
-      self.e_BoxSize_X.insert(0, str(self.InitialBoxSize[0]))
-      self.e_BoxSize_Y.insert(0, str(self.InitialBoxSize[1]))
-      self.e_BoxSize_Z.insert(0, str(self.InitialBoxSize[2]))
-      self.e_BoxPose_X.insert(0, str(self.InitialBoxPose[0]))
-      self.e_BoxPose_Y.insert(0, str(self.InitialBoxPose[1]))
-      self.e_BoxPose_Z.insert(0, str(self.InitialBoxPose[2]))
+      self.e_ShelfSize_X.insert(0, str(self.InitialShelfSize[0]))
+      self.e_ShelfSize_Y.insert(0, str(self.InitialShelfSize[1]))
+      self.e_ShelfSize_Z.insert(0, str(self.InitialShelfSize[2]))
+      self.e_ShelfPose_X.insert(0, str(self.InitialShelfPose[0]))
+      self.e_ShelfPose_Y.insert(0, str(self.InitialShelfPose[1]))
+      self.e_ShelfPose_Z.insert(0, str(self.InitialShelfPose[2]))
 
       b_plan_move_panda = Button(self.window, text="plan_move_panda", command=self.plan_move_panda)
       b_move_panda = Button(self.window, text = "move_panda", command=self.move_panda)
       b_plan_cartesian_path = Button(self.window, text="plan_cartesian_path", command=self.plan_cartesian_path)
       b_move_cartesian_path = Button(self.window, text="move_cartesian_path", command=self.move_cartesian_path) 
       b_add_table_object = Button(self.window, text="add_table_object", command = lambda : self.add_object(float(self.e_TableSize_X.get()),float(self.e_TableSize_Y.get()),float(self.e_TableSize_Z.get()),float(self.e_TablePose_X.get()),float(self.e_TablePose_Y.get()), float(self.e_TablePose_Z.get()), "table"))
-      b_add_box_object = Button(self.window, text="add_box_object", command = lambda : self.add_object(float(self.e_BoxSize_X.get()),float(self.e_BoxSize_Y.get()),float(self.e_BoxSize_Z.get()),float(self.e_BoxPose_X.get()),float(self.e_BoxPose_Y.get()), float(self.e_BoxPose_Z.get()), "box"))
+      b_add_shelf_object = Button(self.window, text="add_shelf_object", command = lambda : self.add_object(float(self.e_ShelfSize_X.get()),float(self.e_ShelfSize_Y.get()),float(self.e_ShelfSize_Z.get()),float(self.e_ShelfPose_X.get()),float(self.e_ShelfPose_Y.get()), float(self.e_ShelfPose_Z.get()), "shelf"))
       b_plan_vision_panda = Button(self.window, text="plan_vision_panda", command=self.plan_vision_panda)
       b_move_vision_panda = Button(self.window, text="move_vision_panda", command=self.move_vision_panda)
+      b_plan_view = Button(self.window, text= "plan_view", command=self.plan_view)
 
       Label(self.window, text="NJH_MOVE_PANDA").grid(row=0)
       Label(self.window, text="Goal_Position_X").grid(row = 1,column=0)
@@ -329,13 +354,13 @@ class NJH_MovePanda(object):
       self.e_TableSize_Z.grid(row=8, column=1)
       b_add_table_object.grid(row=9, column = 0)
 
-      Label(self.window, text="BoxSize_X").grid(row = 6,column=2)
-      Label(self.window, text="BoxSize_Y").grid(row = 7,column=2)
-      Label(self.window, text="BoxSize_Z").grid(row = 8,column=2)
-      self.e_BoxSize_X.grid(row=6, column=3)
-      self.e_BoxSize_Y.grid(row=7, column=3)
-      self.e_BoxSize_Z.grid(row=8, column=3)
-      b_add_box_object.grid(row=9, column = 2)
+      Label(self.window, text="ShelfSize_X").grid(row = 6,column=2)
+      Label(self.window, text="ShelfSize_Y").grid(row = 7,column=2)
+      Label(self.window, text="ShelfSize_Z").grid(row = 8,column=2)
+      self.e_ShelfSize_X.grid(row=6, column=3)
+      self.e_ShelfSize_Y.grid(row=7, column=3)
+      self.e_ShelfSize_Z.grid(row=8, column=3)
+      b_add_shelf_object.grid(row=9, column = 2)
 
       Label(self.window, text="VisionPose_X").grid(row = 1,column=4)
       Label(self.window, text="VisionPose_Y").grid(row = 2,column=4)
@@ -346,7 +371,7 @@ class NJH_MovePanda(object):
       b_plan_vision_panda.grid(row=4, column=4)
       b_move_vision_panda.grid(row=4, column=5)
 
-
+      b_plan_view.grid(row=5, column= 4)
 
       self.window.mainloop()
 
