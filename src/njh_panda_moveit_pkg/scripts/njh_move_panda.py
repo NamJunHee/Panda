@@ -53,7 +53,7 @@ class NJH_MovePanda(object):
       self.InitialGoalPosition_Y = 0.0
       self.InitialGoalPosition_Z = 0.5
 
-      self.InitialCartesian_X = 0.1
+      self.InitialCartesian_X = 0.0
       self.InitialCartesian_Y = 0.0
       self.InitialCartesian_Z = 0.0
 
@@ -292,7 +292,7 @@ class NJH_MovePanda(object):
       self.e_BoxPose_Z.insert(0, str(self.InitialBoxPose[2]))
 
       b_plan_move_panda = Button(self.window, text="plan_move_panda", command=self.plan_move_panda)
-      b_move_panda = Button(self.window, text = "MOVE_PANDA", command=self.move_panda)
+      b_move_panda = Button(self.window, text = "move_panda", command=self.move_panda)
       b_plan_cartesian_path = Button(self.window, text="plan_cartesian_path", command=self.plan_cartesian_path)
       b_move_cartesian_path = Button(self.window, text="move_cartesian_path", command=self.move_cartesian_path) 
       b_add_table_object = Button(self.window, text="add_table_object", command = lambda : self.add_object(float(self.e_TableSize_X.get()),float(self.e_TableSize_Y.get()),float(self.e_TableSize_Z.get()),float(self.e_TablePose_X.get()),float(self.e_TablePose_Y.get()), float(self.e_TablePose_Z.get()), "table"))
