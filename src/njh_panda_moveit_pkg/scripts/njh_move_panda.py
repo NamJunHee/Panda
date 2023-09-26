@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+DIGET = 3
+PRINGLES = 4
+GOTICA = 5
+MILK = 8
+
 import rospy
 import copy
 import numpy as np
@@ -19,6 +24,7 @@ from tkinter import *
 
 from symbolic_msgs.srv import*
 from std_msgs.msg import String
+from gripper_test import gripper_publisher
 
 
 class NJH_MovePanda(object):
@@ -28,7 +34,6 @@ class NJH_MovePanda(object):
       super(NJH_MovePanda, self).__init__()
 
       moveit_commander.roscpp_initialize(sys.argv)
-      rospy.init_node("njh_move_panda",anonymous=True)
 
       robot = moveit_commander.RobotCommander()
       scene = moveit_commander.PlanningSceneInterface()
@@ -46,8 +51,8 @@ class NJH_MovePanda(object):
       # self.vision_position = 0
       # self.vision_orientation = 0
 
-      self.move_plan = moveit_msgs.msg.RobotTrajectory
-      self.vision_plan = moveit_msgs.msg.RobotTrajectory
+      self.move_plan = moveit_msgs.msg.RobotTrajectory()
+      self.vision_plan = moveit_msgs.msg.RobotTrajectory() 
 
       self.x_compensation = 0.254
       self.z_compensation = 0.576
@@ -97,6 +102,12 @@ class NJH_MovePanda(object):
       self.e_VisionPose_Y = Entry(self.window)
       self.e_VisionPose_Z = Entry(self.window)
 
+      self.e_SelectObject = Entry(self.window)
+      self.Select_Object = ["coffee","potato_chip","milk","cookie"]
+      self.Object_Number = 0
+
+      self.object_id = IntVar()
+
       # planning_frame = move_group.get_planning_frame()
       # print("============ Planning frame: %s" % planning_frame)
       # eef_link = move_group.get_end_effector_link()
@@ -117,11 +128,16 @@ class NJH_MovePanda(object):
         request = perceptionRequest()
         request.detect_obj = True
         request.place = 1
-
         response = service_proxy(request)
-        
-        #response
-        vision_position = response.det_3d.detections[0].bbox.center.position
+
+        print(self.object_id.get())
+     
+        for object_id in range(len(response.det_3d.detections)) :
+           print(object_id)
+           if response.det_3d.detections[object_id].results[0].id == self.object_id.get():
+              vision_position = response.det_3d.detections[object_id].bbox.center.position
+
+      #   vision_position = response.det_3d.detections[0].bbox.center.position
       #   vision_orientation = response.det_3d.detections[0].bbox.center.orientation
 
         move_group = self.move_group
@@ -131,22 +147,21 @@ class NJH_MovePanda(object):
         pose_goal.position.x = vision_position.x
         pose_goal.position.y = vision_position.y
         pose_goal.position.z = vision_position.z
-        print(pose_goal.position)
 
         if pose_goal.position.x > 0 :
-           pose_goal.position.x -= 0.2
+           pose_goal.position.x -= 0.05
         else :
-           pose_goal.position.x += 0.2
+           pose_goal.position.x += 0.05
 
         if pose_goal.position.y > 0 :
-           pose_goal.position.y -= 0.0
+           pose_goal.position.y -= 0.01
         else :
-           pose_goal.position.y += 0.0
+           pose_goal.position.y += 0.01
 
         if pose_goal.position.z > 0 :
-           pose_goal.position.z += 0.1
+           pose_goal.position.z += 0.01
         else :
-           pose_goal.position.z -= 0.1
+           pose_goal.position.z -= 0.01
 
         quaternion = tf.transformations.quaternion_from_euler(pi*2/3, 0, pi, 'ryxz') 
         pose_goal.orientation.x = quaternion[0] 
@@ -154,7 +169,7 @@ class NJH_MovePanda(object):
         pose_goal.orientation.z = quaternion[2]
         pose_goal.orientation.w = quaternion[3]
 
-        print(pose_goal.position)
+      #   print(pose_goal.position)
    
         move_group.set_pose_target(pose_goal)
         self.vision_plan = move_group.plan()
@@ -180,11 +195,11 @@ class NJH_MovePanda(object):
       wpose.position.y += scale * float(self.e_Certesian_Y.get())
       wpose.position.z += scale * float(self.e_Certesian_Z.get()) - self.z_compensation
 
-      quaternion = tf.transformations.quaternion_from_euler(pi*3/4, 0, pi, 'ryxz')
-      wpose.orientation.x = quaternion[0] 
-      wpose.orientation.y = quaternion[1]
-      wpose.orientation.z = quaternion[2] 
-      wpose.orientation.w = quaternion[3]
+      # quaternion = tf.transformations.quaternion_from_euler(pi*2/3, 0, pi, 'ryxz')
+      # wpose.orientation.x = quaternion[0] 
+      # wpose.orientation.y = quaternion[1]
+      # wpose.orientation.z = quaternion[2] 
+      # wpose.orientation.w = quaternion[3]
 
       waypoints = []
       waypoints.append(copy.deepcopy(wpose))
@@ -203,7 +218,7 @@ class NJH_MovePanda(object):
       pose_goal.position.z = float(self.e_GoalPosition_Z.get())
 
       # 회전 순서 y->z->x
-      quaternion = tf.transformations.quaternion_from_euler(pi*3/4, 0, pi, 'ryxz') 
+      quaternion = tf.transformations.quaternion_from_euler(pi*2/3, 0, pi, 'ryxz') 
       pose_goal.orientation.x = quaternion[0]
       pose_goal.orientation.y = quaternion[1]
       pose_goal.orientation.z = quaternion[2]
@@ -220,7 +235,7 @@ class NJH_MovePanda(object):
    def move_panda(self):
 
       move_group = self.move_group
-      move_group.execute(self.move_plan,wait = True)
+      move_group.execute(self.move_plan[1],wait = True)
 
    def move_cartesian_path(self):
 
@@ -232,7 +247,7 @@ class NJH_MovePanda(object):
    def move_vision_panda(self):
       
       move_group = self.move_group
-      move_group.execute(self.vision_plan, wait = True)
+      move_group.execute(self.vision_plan[1], wait = True)
 
    def add_object(self, size_x, size_y, size_z, position_x, position_y, position_z, name):
 
@@ -292,7 +307,7 @@ class NJH_MovePanda(object):
    def panda_GUI(self):
 
       self.window.iconbitmap = "tf_icon.png"
-      self.window.geometry("1000x400+500+300")
+      self.window.geometry("350x580+500+300")
 
       self.e_GoalPosition_X.insert(0, str(self.InitialGoalPosition_X))
       self.e_GoalPosition_Y.insert(0, str(self.InitialGoalPosition_Y))
@@ -315,6 +330,8 @@ class NJH_MovePanda(object):
       self.e_ShelfPose_Y.insert(0, str(self.InitialShelfPose[1]))
       self.e_ShelfPose_Z.insert(0, str(self.InitialShelfPose[2]))
 
+      self.e_SelectObject.insert(0, "coffee")
+
       b_plan_move_panda = Button(self.window, text="plan_move_panda", command=self.plan_move_panda)
       b_move_panda = Button(self.window, text = "move_panda", command=self.move_panda)
       b_plan_cartesian_path = Button(self.window, text="plan_cartesian_path", command=self.plan_cartesian_path)
@@ -335,52 +352,67 @@ class NJH_MovePanda(object):
       b_plan_move_panda.grid(row=4, column=0)
       b_move_panda.grid(row=4, column = 1)
 
-      Label(self.window, text="Certesian_X").grid(row = 1,column=2)
-      Label(self.window, text="Certesian_Y").grid(row = 2,column=2)
-      Label(self.window, text="Certesian_Z").grid(row = 3,column=2)
-      self.e_Certesian_X.grid(row=1, column=3)
-      self.e_Certesian_Y.grid(row=2, column=3)
-      self.e_Certesian_Z.grid(row=3, column=3)
-      b_plan_cartesian_path.grid(row=4, column=2)
-      b_move_cartesian_path.grid(row=4, column=3)
+      Label(self.window, text="Certesian_X").grid(row = 5,column=0)
+      Label(self.window, text="Certesian_Y").grid(row = 6,column=0)
+      Label(self.window, text="Certesian_Z").grid(row = 7,column=0)
+      self.e_Certesian_X.grid(row=5, column=1)
+      self.e_Certesian_Y.grid(row=6, column=1)
+      self.e_Certesian_Z.grid(row=7, column=1)
+      b_plan_cartesian_path.grid(row=8, column=0)
+      b_move_cartesian_path.grid(row=8, column=1)
 
-      Label(self.window, text="\n").grid(row=5)
+      # Label(self.window, text="\n").grid(row=5)
 
-      Label(self.window, text="TableSize_X").grid(row = 6,column=0)
-      Label(self.window, text="TableSize_Y").grid(row = 7,column=0)
-      Label(self.window, text="TableSize_Z").grid(row = 8,column=0)
-      self.e_TableSize_X.grid(row=6, column=1)
-      self.e_TableSize_Y.grid(row=7, column=1)
-      self.e_TableSize_Z.grid(row=8, column=1)
-      b_add_table_object.grid(row=9, column = 0)
+      Label(self.window, text="TableSize_X").grid(row =  9,column=0)
+      Label(self.window, text="TableSize_Y").grid(row = 10,column=0)
+      Label(self.window, text="TableSize_Z").grid(row = 11,column=0)
+      self.e_TableSize_X.grid(row=9, column=1)
+      self.e_TableSize_Y.grid(row=10, column=1)
+      self.e_TableSize_Z.grid(row=11, column=1)
+      b_add_table_object.grid(row=12, column = 0)
 
-      Label(self.window, text="ShelfSize_X").grid(row = 6,column=2)
-      Label(self.window, text="ShelfSize_Y").grid(row = 7,column=2)
-      Label(self.window, text="ShelfSize_Z").grid(row = 8,column=2)
-      self.e_ShelfSize_X.grid(row=6, column=3)
-      self.e_ShelfSize_Y.grid(row=7, column=3)
-      self.e_ShelfSize_Z.grid(row=8, column=3)
-      b_add_shelf_object.grid(row=9, column = 2)
+      Label(self.window, text="ShelfSize_X").grid(row = 13,column=0)
+      Label(self.window, text="ShelfSize_Y").grid(row = 14,column=0)
+      Label(self.window, text="ShelfSize_Z").grid(row = 15,column=0)
+      self.e_ShelfSize_X.grid(row=13, column=1)
+      self.e_ShelfSize_Y.grid(row=14, column=1)
+      self.e_ShelfSize_Z.grid(row=15, column=1)
+      b_add_shelf_object.grid(row=16, column = 0)
 
-      Label(self.window, text="VisionPose_X").grid(row = 1,column=4)
-      Label(self.window, text="VisionPose_Y").grid(row = 2,column=4)
-      Label(self.window, text="VisionPose_Z").grid(row = 3,column=4)
-      self.e_VisionPose_X.grid(row=1, column=5)
-      self.e_VisionPose_Y.grid(row=2, column=5)
-      self.e_VisionPose_Z.grid(row=3, column=5)
-      b_plan_vision_panda.grid(row=4, column=4)
-      b_move_vision_panda.grid(row=4, column=5)
+      Label(self.window, text="VisionPose_X").grid(row = 17,column=0)
+      Label(self.window, text="VisionPose_Y").grid(row = 18,column=0)
+      Label(self.window, text="VisionPose_Z").grid(row = 19,column=0)
+      # Label(self.window, text="Select_Object").grid(row = 20, column=0)
+      self.e_VisionPose_X.grid(row=17, column=1)
+      self.e_VisionPose_Y.grid(row=18, column=1)
+      self.e_VisionPose_Z.grid(row=19, column=1)
+      # self.e_SelectObject.grid(row=20, column=1)
+      b_plan_vision_panda.grid(row=22, column=0)
+      b_move_vision_panda.grid(row=22, column=1)
 
-      b_plan_view.grid(row=5, column= 4)
+      Radiobutton(self.window, text = "Diget", padx=20,variable=self.object_id, value = DIGET).grid(row=20, column=0)
+      Radiobutton(self.window, text = "Pringles", padx=20,variable=self.object_id, value = PRINGLES).grid(row=20, column=1)
+      Radiobutton(self.window, text = "Gotica", padx=20,variable=self.object_id, value = GOTICA).grid(row=21, column=0)
+      Radiobutton(self.window, text = "Milk", padx=20,variable=self.object_id, value = MILK).grid(row=21, column=1)
+
+      # b_plan_view.grid(row=21, column= 0)
 
       self.window.mainloop()
 
 def main():
-
+   rospy.init_node("njh_move_panda",anonymous=True)
+   # input("reset&activate")
+   gripper_publisher('r')
+   gripper_publisher('a')
+   # input("close")
+   # gripper_publisher('c')
+   # input("open")
+   # gripper_publisher('o')
+   
    move_panda = NJH_MovePanda()
    move_panda.panda_GUI()
 
-if __name__ == "__main__":
+if __name__ == "__main__":   
     try:
         main()
     except rospy.ROSInterruptException:
